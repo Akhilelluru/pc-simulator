@@ -23,16 +23,12 @@ conn = init_connection()
 # Perform query.
 # Uses st.experimental_memo to only rerun when the query changes or after 10 min.
 @st.experimental_memo(ttl=600)
-def run_query(query):
-    with conn.cursor() as cur:
-        cur.execute(query)
-        return cur.fetchall()
+def read_data(query, conn):
+    return pd.read_sql_query(query, conn)
 
-data = run_query("SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK) where dltdt = '2022-07-15' order by dltdt")
-print(data.society.unique())
-## Print results.
-#for row in data:
-#    st.write(f"{row[0]} has a :{row[1]}:")
+sql_query = "SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK) where dltdt = '2022-07-15' order by dltdt"
+data = read_data(sql_query, conn)
+print(list(data.society.unique()))
 
 if "button_clicked" not in st.session_state:    
     st.session_state.button_clicked = False
