@@ -117,7 +117,8 @@ def main():
         with col2:
             LE = st.selectbox(
             'LE',
-            list(data['LE'].unique()),
+            #list(data['LE'].unique()),
+            ['6+6'],
             key=2
                 )    
 
@@ -147,7 +148,8 @@ def main():
         st.session_state.DA = 0
         st.session_state.IA = 0
 
-    data1 = data[(data['society']==SOCIETY) & (data['LE']==LE) & (data['month']==Month)]
+    #data1 = data[(data['society']==SOCIETY) & (data['LE']==LE) & (data['month']==Month)]
+    data1 = data[(data['society']==SOCIETY) & (data['month']==Month)]
 
     Selected_data = dict()
     
