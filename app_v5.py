@@ -31,15 +31,13 @@ def init_connection():
         + st.secrets["password"]
     )
 
-conn = init_connection()
+sql_conn = init_connection()
 
 # Perform query.
 # Uses st.experimental_memo to only rerun when the query changes or after 10 min.
 @st.experimental_memo(ttl=600)
-def run_query(query):
-    with conn.cursor() as cur:
-        cur.execute(query)
-        return cur.fetchall()
+def read_data(_query, _conn):
+    return pd.read_sql_query(_query, _conn)
 
 # Call back variable Intialization for Input submit Button
 if "button_clicked" not in st.session_state:    
@@ -53,12 +51,12 @@ def inputs_callback():
 def drivers_callback():
     st.session_state.drivers_clicked = True
 
-@st.cache
-def read_input(filepath):
+#@st.cache
+#def read_input(filepath):
     
-    data = pd.read_excel(filepath)
+#    data = pd.read_excel(filepath)
 
-    return data
+#    return data
 
 # @st.cache
 # def convert_df(df):
@@ -66,7 +64,7 @@ def read_input(filepath):
 
 
 # data = read_input('data/dummy_file.xlsx')
-data = run_query('SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK)')
+#data = run_query('SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK)')
 
 def derived_variables_calc(d):
     
@@ -102,6 +100,10 @@ def results_df_creation(selected_data,adjusted_data):
 def main():
     st.image('image/Ab-inbev_logo.jfif', width=100)
     st.title('Tax Simulator')
+
+    sql_query = "SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK) where dltdt = '2022-07-15' order by dltdt"
+    data = read_data(sql_query, sql_conn)
+    #print(list(data.society.unique()))
 
     with st.form(key = "inputs"):
         col1, col2, col3,col4 = st.columns(4)
