@@ -28,6 +28,8 @@ def run_query(query):
         cur.execute(query)
         return cur.fetchall()
 
+data = run_query("SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK) where dltdt = '2022-07-15' order by dltdt")
+print(data.society.unique())
 ## Print results.
 #for row in data:
 #    st.write(f"{row[0]} has a :{row[1]}:")
@@ -53,7 +55,6 @@ with col2:
 
 with st.form(key = "inputs"):
     col1, col2, col3,col4 = st.columns(4)
-    data = run_query("SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK) where dltdt = '2022-07-15' order by dltdt")
     with col1:
         SOCIETY = st.selectbox(
             'Society',
