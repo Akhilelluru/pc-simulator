@@ -209,7 +209,7 @@ def main():
         with exp_col1:
             exp_option = st.selectbox(
                 'Expenses(Mi Mxn)',
-                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Expenses']['forecaster_number'])],
+                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Expenses']['forecast_number'])],
                 key="exp_select"
                 )
 
