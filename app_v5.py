@@ -321,8 +321,8 @@ def main():
                 "Expenses":int(exp_option.replace(',','')),
                 "Discounts" : int(dis_option.replace(',','')),
                 "Other Expenses":int(oth_exp_option.replace(',','')),
-                "Depreciation Amortization":int(da_option.replace(',','')),
-                "Inflationary Adjustments" : int(ia_option.replace(',','')),
+                #"Depreciation Amortization":int(da_option.replace(',','')),
+                #"Inflationary Adjustments" : int(ia_option.replace(',','')),
             }
             Adjusted_data = {
                 "Beersales":bs_Adjusted_Amount,
