@@ -15,6 +15,31 @@ warnings.filterwarnings("ignore")
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 
 print("start")
+# Initialize connection.
+# Uses st.experimental_singleton to only run once.
+@st.experimental_singleton
+def init_connection():
+    return pyodbc.connect(
+        "DRIVER={ODBC Driver 17 for SQL Server};SERVER="
+        + st.secrets["server"]
+        + ";DATABASE="
+        + st.secrets["database"]
+        + ";UID="
+        + st.secrets["username"]
+        + ";PWD="
+        + st.secrets["password"]
+    )
+
+conn = init_connection()
+
+# Perform query.
+# Uses st.experimental_memo to only rerun when the query changes or after 10 min.
+@st.experimental_memo(ttl=600)
+def run_query(query):
+    with conn.cursor() as cur:
+        cur.execute(query)
+        return cur.fetchall()
+
 # Call back variable Intialization for Input submit Button
 if "button_clicked" not in st.session_state:    
     st.session_state.button_clicked = False
@@ -29,7 +54,7 @@ def drivers_callback():
 
 @st.cache
 def read_input(filepath):
-
+    
     data = pd.read_excel(filepath)
 
     return data
@@ -39,7 +64,8 @@ def read_input(filepath):
 #    return df.to_csv().encode('utf-8')
 
 
-data = read_input('data/dummy_file.xlsx')
+# data = read_input('data/dummy_file.xlsx')
+data = run_query('SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK)')
 
 def derived_variables_calc(d):
     
