@@ -7,7 +7,7 @@ from io import BytesIO
 import pyodbc
 
 # Image
-from PIL import Image
+#from PIL import Image
 
 import warnings
 warnings.filterwarnings("ignore") 
@@ -331,8 +331,8 @@ def main():
                 "Expenses":exp_Adjusted_Amount,
                 "Discounts" : dis_Adjusted_Amount,
                 "Other Expenses":oth_exp_Adjusted_Amount,
-                "Depreciation Amortization":da_Adjusted_Amount,
-                "Inflationary Adjustments":ia_Adjusted_Amount
+                #"Depreciation Amortization":da_Adjusted_Amount,
+                #"Inflationary Adjustments":ia_Adjusted_Amount
             }
 
             output_df = results_df_creation(selected_data,Adjusted_data)
