@@ -18,7 +18,7 @@ def init_connection():
         + st.secrets["password"]
     )
 
-conn = init_connection()
+sql_conn = init_connection()
 
 # Perform query.
 # Uses st.experimental_memo to only rerun when the query changes or after 10 min.
@@ -27,7 +27,7 @@ def read_data(query, conn):
     return pd.read_sql_query(query, conn)
 
 sql_query = "SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK) where dltdt = '2022-07-15' order by dltdt"
-data = read_data(sql_query, conn)
+data = read_data(sql_query, sql_conn)
 print(list(data.society.unique()))
 
 if "button_clicked" not in st.session_state:    
