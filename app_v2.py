@@ -28,11 +28,13 @@ def run_query(query):
         cur.execute(query)
         return cur.fetchall()
 
-rows = run_query("Select top 10 left(society, 4) as society_id, year, month, pp_001001, pp_006001 from [abi_stg].[mx_tax_prof_coef_nominal_income];")
+data = run_query('SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK)')
 
 # Print results.
-for row in rows:
+for row in data:
     st.write(f"{row[0]} has a :{row[1]}:")
+
+SOCIETY
 
 
 if "button_clicked" not in st.session_state:    
@@ -59,8 +61,8 @@ with st.form(key = "inputs"):
     with col1:
         SOCIETY = st.selectbox(
             'Society',
-            ["2013","2001","2005","2006","2008"],
-            key=1
+            list(data['society'].unique()),
+            key=1                 
         )
     with col2:
         RUN_DATE = st.selectbox(
