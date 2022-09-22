@@ -254,39 +254,39 @@ def main():
             OTH_EXP_FINAL = int(oth_exp_option.replace(',','')) + oth_exp_Adjusted_Amount
             st.metric(label="Final Other Expenses(Mi Mxn)", value=f'{OTH_EXP_FINAL:,}')
         
-        # Depreciation & Amortization
-        da_col1, da_col2,da_col3= st.columns([2,1,2])
+        ## Depreciation & Amortization
+        #da_col1, da_col2,da_col3= st.columns([2,1,2])
 
-        with da_col1:
-            da_option = st.selectbox(
-                'Depreciation Amortization(Mi Mxn)',
-                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Depreciation Amortization']['forecast_number'])],
-                key="DA_select"
-                )
+        #with da_col1:
+        #    da_option = st.selectbox(
+        #        'Depreciation Amortization(Mi Mxn)',
+        #        [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Depreciation Amortization']['forecast_number'])],
+        #        key="DA_select"
+        #        )
 
-        with da_col2:
-            da_Adjusted_Amount = st.number_input('Adjusted(Mi Mxn)',key="DA",format="%.4f") 
+        #with da_col2:
+        #    da_Adjusted_Amount = st.number_input('Adjusted(Mi Mxn)',key="DA",format="%.4f") 
         
-        with da_col3:
-            DA_FINAL = int(da_option.replace(',','')) + da_Adjusted_Amount
-            st.metric(label="Final Depreciation Amortization(Mi Mxn)", value=f'{DA_FINAL:,}')
+        #with da_col3:
+        #    DA_FINAL = int(da_option.replace(',','')) + da_Adjusted_Amount
+        #    st.metric(label="Final Depreciation Amortization(Mi Mxn)", value=f'{DA_FINAL:,}')
 
-        # Inflationary Adjustments
-        ia_col1, ia_col2,ia_col3= st.columns([2,1,2])
+        ## Inflationary Adjustments
+        #ia_col1, ia_col2,ia_col3= st.columns([2,1,2])
 
-        with ia_col1:
-            ia_option = st.selectbox(
-                'Inflationary Adjustments(Mi Mxn)',
-                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Inflationary Adjustments']['forecast_number'])],
-                key="IA_select"
-                )
+        #with ia_col1:
+        #    ia_option = st.selectbox(
+        #        'Inflationary Adjustments(Mi Mxn)',
+        #        [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Inflationary Adjustments']['forecast_number'])],
+        #        key="IA_select"
+        #        )
 
-        with ia_col2:
-            ia_Adjusted_Amount = st.number_input('Adjusted(Mi Mxn)',key="IA",format="%.4f") 
+        #with ia_col2:
+        #    ia_Adjusted_Amount = st.number_input('Adjusted(Mi Mxn)',key="IA",format="%.4f") 
         
-        with ia_col3:
-            IA_FINAL = int(ia_option.replace(',','')) + ia_Adjusted_Amount
-            st.metric(label="Final Inflationary Adjustments(Mi Mxn)", value=f'{IA_FINAL:,}')
+        #with ia_col3:
+        #    IA_FINAL = int(ia_option.replace(',','')) + ia_Adjusted_Amount
+        #    st.metric(label="Final Inflationary Adjustments(Mi Mxn)", value=f'{IA_FINAL:,}')
 
         # # Ledger Accounts
         # IA_col1, ia_col2,ia_col3= st.columns([2,1,2])
