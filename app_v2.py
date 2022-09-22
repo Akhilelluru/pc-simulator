@@ -34,9 +34,6 @@ data = run_query('SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK
 for row in data:
     st.write(f"{row[0]} has a :{row[1]}:")
 
-SOCIETY
-
-
 if "button_clicked" not in st.session_state:    
     st.session_state.button_clicked = False
     
