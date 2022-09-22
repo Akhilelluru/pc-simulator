@@ -23,8 +23,8 @@ sql_conn = init_connection()
 # Perform query.
 # Uses st.experimental_memo to only rerun when the query changes or after 10 min.
 @st.experimental_memo(ttl=600)
-def read_data(query, conn):
-    return pd.read_sql_query(query, conn)
+def read_data(_query, _conn):
+    return pd.read_sql_query(_query, _conn)
 
 sql_query = "SELECT * FROM [abi_edw].[mx_tax_prof_coef_results] WITH(NOLOCK) where dltdt = '2022-07-15' order by dltdt"
 data = read_data(sql_query, sql_conn)
