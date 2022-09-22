@@ -159,7 +159,7 @@ def main():
         with bs_col1:
             bs_option = st.selectbox(
             'Beer Sales(Mi Mxn)',
-            [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Beer_Sales']['forecaster_number'])],
+            [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Beer_Sales']['forecast_number'])],
             key="BS_select")
 
         with bs_col2:
@@ -174,8 +174,8 @@ def main():
         with OI_col1:
             oi_option = st.selectbox(
             'Other Income(Mi Mxn)',
-            [f'{int(i/pow(10,6)):,}' for i in list(np.array(data1[data1['component']=='NI']['forecaster_number']) - \
-                np.array(data1[data1['component']=='Beer_Sales']['forecaster_number']))],
+            [f'{int(i/pow(10,6)):,}' for i in list(np.array(data1[data1['component']=='NI']['forecast_number']) - \
+                np.array(data1[data1['component']=='Beer_Sales']['forecast_number']))],
             key="OI_select"
             )
 
@@ -192,7 +192,7 @@ def main():
         with cost_col1:
             cost_option = st.selectbox(
                 'Cost(Mi Mxn)',
-                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Costs']['forecaster_number'])],
+                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Costs']['forecast_number'])],
                 key="cost_select"
                 )
 
@@ -226,7 +226,7 @@ def main():
         with dis_col1:
             dis_option = st.selectbox(
                 'Discounts(Mi Mxn)',
-                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Discounts']['forecaster_number'])],
+                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Discounts']['forecast_number'])],
                 key="dis_select"
                 )
 
@@ -243,7 +243,7 @@ def main():
         with oth_exp_col1:
             oth_exp_option = st.selectbox(
                 'Other Expenses(Mi Mxn)',
-                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Other expenses']['forecaster_number'])],
+                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Other expenses']['forecast_number'])],
                 key="oth_exp_select"
                 )
 
@@ -260,7 +260,7 @@ def main():
         with da_col1:
             da_option = st.selectbox(
                 'Depreciation Amortization(Mi Mxn)',
-                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Depreciation Amortization']['forecaster_number'])],
+                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Depreciation Amortization']['forecast_number'])],
                 key="DA_select"
                 )
 
@@ -277,7 +277,7 @@ def main():
         with ia_col1:
             ia_option = st.selectbox(
                 'Inflationary Adjustments(Mi Mxn)',
-                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Inflationary Adjustments']['forecaster_number'])],
+                [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Inflationary Adjustments']['forecast_number'])],
                 key="IA_select"
                 )
 
@@ -294,7 +294,7 @@ def main():
         # with ia_col1:
         #     ia_option = st.selectbox(
         #         'Inflationary Adjustments(Mi Mxn)',
-        #         [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Inflationary Adjustments']['forecaster_number'])],
+        #         [f'{int(i/pow(10,6)):,}' for i in list(data1[data1['component']=='Inflationary Adjustments']['forecast_number'])],
         #         key="IA_select"
         #         )
 
