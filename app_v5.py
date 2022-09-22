@@ -128,13 +128,13 @@ def main():
             key=3
         )
 
-        with col4:
-            # Every form must have a submit button.
-            input_submitted = st.form_submit_button("Submit",on_click = inputs_callback)
-            if input_submitted:
-                SOCIETY = SOCIETY
-                LE = LE
-                Month = Month
+        #with col4:
+    # Every form must have a submit button.
+    input_submitted = st.form_submit_button("Submit",on_click = inputs_callback)
+    if input_submitted:
+        SOCIETY = SOCIETY
+        LE = LE
+        Month = Month
     
     # Reintializing the drivers input
     if input_submitted:
