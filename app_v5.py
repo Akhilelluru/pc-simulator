@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from collections import Counter
 from io import BytesIO
+import pyodbc
 
 # Image
 from PIL import Image
