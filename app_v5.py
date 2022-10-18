@@ -1,18 +1,55 @@
 from collections import Counter
 import numpy as np
 import pandas as pd
+from datetime import datetime
 import pyodbc
 import streamlit as st
+from PIL import Image
+import base64
 from io import BytesIO
 from src.config import SQL_QRY
 
 # Fixing the format of number in pandas DataFrames
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 
-# logo
-st.image('image/Ab-inbev_logo.jfif', width=100)
 # title
-st.title('Tax Simulator')
+title = 'Tax Simulator'
+
+# logo
+LOGO_IMG = 'image/Ab-inbev_logo.jfif'
+
+## title & heading using markdown.
+st.markdown(
+    """
+    <style>
+    .container {
+        display: flex;
+    }
+    .logo-text {
+        font-weight: 700 !important;
+        font-size: 50px !important;
+        color: #151414 !important;
+        padding-left: 75px !important;
+        padding-top: 1px;
+    }
+    .logo-img {
+        height: 60px;
+        width: auto;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    f"""
+    <div class="container">
+        <img class="logo-img" src="data:image/png;base64,{base64.b64encode(open(LOGO_IMG, "rb").read()).decode()}">
+        <p class="logo-text">{title}</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # Initialize connection.
@@ -30,6 +67,20 @@ def init_connection():
         + st.secrets["password"]
     )
 
+# Perform query.
+# Uses st.experimental_memo to only rerun when the query changes or after 10 min.
+@st.experimental_memo(ttl=600)
+def read_data(_query, _conn):
+    return pd.read_sql_query(_query, _conn)
+
+# filter data
+def filter_data(df, key = {}):
+    if not key:
+        tmp_df = df.copy()
+    else:
+        tmp_df = df.loc[(df[list(key)] == pd.Series(key)).all(axis=1)]
+    print(df.shape, tmp_df.shape, key)
+    return tmp_df
 
 # Call back variable initialization for Input submit Button
 if "button_clicked" not in st.session_state:
@@ -38,30 +89,20 @@ if "button_clicked" not in st.session_state:
 if "drivers_clicked" not in st.session_state:
     st.session_state["drivers_clicked"] = False
 
-
 # inputs call-back function
 def inputs_callback():
     st.session_state.button_clicked = True
 
-
 def drivers_callback():
     st.session_state.drivers_clicked = True
-
-
-# Perform query.
-# Uses st.experimental_memo to only rerun when the query changes or after 10 min.
-@st.experimental_memo(ttl=600)
-def read_data(_query, _conn):
-    return pd.read_sql_query(_query, _conn)
-
 
 def derived_variables_calc(d):
     d["Nominal Income"] = d["Beer Sales"] + d["Other Incomes"]
     d["Net Revenue"] = d["Nominal Income"] - d["Discounts"]
     d["MACO"] = d["Net Revenue"] - d["Cost"]
     d["EBITDA"] = d["MACO"] - d["Expenses"]
-    d["EBT"] = d["EBITDA"] - (d["Depreciation Amortization"] + \
-               d["Cuentas Mayor"] + d["Inflationary Adjustments"] + d["Other Expenses"])
+    d["EBT"] = d["EBITDA"] - (d["Depreciation Amortization"] +
+                              d["Cuentas Mayor"] + d["Inflationary Adjustments"] + d["Other Expenses"])
     d["PC"] = d["EBT"] / d["Nominal Income"]
 
     return d
@@ -85,6 +126,7 @@ def results_df_creation(selected_data, adjusted_data):
 
     return df
 
+
 def to_excel(df):
     output = BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
@@ -97,6 +139,7 @@ def to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
+
 def main():
     # initialize connection
     sql_conn = init_connection()
@@ -104,39 +147,55 @@ def main():
     # read query
     data = read_data(SQL_QRY, sql_conn)
 
-    with st.form(key="inputs"):
+    # get filtered data
+    dropdown_data = data.loc[data.component == 'NI', ['le', 'society', 'month']].drop_duplicates()
+
+    with st.container():
         col1, col2, col3 = st.columns(3)
+
         with col1:
-            sc_selectbox = st.selectbox(
-                'Society',
-                sorted(data['society'].unique()),
-                key=1
+            le_selectbox = st.selectbox(
+                'LE',
+                options= ['select'] + sorted(dropdown_data['le'].unique(), reverse=True),
+                key='le_sbox'
             )
 
         with col2:
-            le_selectbox = st.selectbox(
-                'LE',
-                sorted(data['le'].unique()),
-                key=2
+            if le_selectbox != 'select':
+                le_box_value = st.session_state['le_sbox']
+                print(le_box_value)
+                print(f'second filter, {dropdown_data.columns}')
+                sc_selectbox_options = ['select'] + sorted(dropdown_data[dropdown_data['le'] == le_box_value]['society'].unique(), reverse=False)
+            else:
+                sc_selectbox_options = ['select']
+
+            sc_selectbox = st.selectbox(
+                'Society',
+                options= sc_selectbox_options,
+                key='sc_sbox'
             )
 
         with col3:
+            if le_selectbox != 'select':
+                le_box_value = st.session_state['le_sbox']
+                month_selectbox_options = ['select'] + sorted(dropdown_data[dropdown_data['le'] == le_box_value]['month'].unique(), reverse=True)
+            else:
+                month_selectbox_options = ['select']
+
             month_selectbox = st.selectbox(
                 'Month',
-                sorted(data['month'].unique()),
-                key=3
+                options=month_selectbox_options,
+                key='month_sbox'
             )
 
         # Every form must have a submit button.
-        input_submitted = st.form_submit_button("Submit", on_click=inputs_callback)
+        input_submitted = st.button("Submit", on_click=inputs_callback)
         if input_submitted:
             society = sc_selectbox
             le = le_selectbox
             month = month_selectbox
             # store the values in session, once "Submit" button clicked
             st.session_state['society'], st.session_state['le'], st.session_state['month'] = society, le, month
-
-
 
     # Reintializing the drivers input
     if input_submitted:
@@ -165,7 +224,8 @@ def main():
                 'Beer Sales(Mi Mxn)',
                 [f'{float(i / pow(10, 6)):,.2f}' for i in
                  list(data1[data1['component'] == 'Beer_Sales']['forecast_number'])],
-                key="BS_select")
+                key="BS_select"
+            )
 
         with bs_col2:
             bs_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="BS", format="%.4f")
@@ -180,7 +240,7 @@ def main():
             oi_option = st.selectbox(
                 'Other Income(Mi Mxn)',
                 [f'{float(i / pow(10, 6)):,.2f}' for i in
-                 list(np.array(data1[data1['component'] == 'NI']['forecast_number']) - \
+                 list(np.array(data1[data1['component'] == 'NI']['forecast_number']) -
                       np.array(data1[data1['component'] == 'Beer_Sales']['forecast_number']))],
                 key="OI_select"
             )
@@ -198,7 +258,8 @@ def main():
         with cost_col1:
             cost_option = st.selectbox(
                 'Cost(Mi Mxn)',
-                [f'{float(i / pow(10, 6)):,.2f}' for i in list(data1[data1['component'] == 'Costs']['forecast_number'])],
+                [f'{float(i / pow(10, 6)):,.2f}' for i in
+                 list(data1[data1['component'] == 'Costs']['forecast_number'])],
                 key="cost_select"
             )
 
@@ -215,7 +276,8 @@ def main():
         with exp_col1:
             exp_option = st.selectbox(
                 'Expenses(Mi Mxn)',
-                [f'{float(i / pow(10, 6)):,.2f}' for i in list(data1[data1['component'] == 'Expenses']['forecast_number'])],
+                [f'{float(i / pow(10, 6)):,.2f}' for i in
+                 list(data1[data1['component'] == 'Expenses']['forecast_number'])],
                 key="exp_select"
             )
 
@@ -232,7 +294,8 @@ def main():
         with dis_col1:
             dis_option = st.selectbox(
                 'Discounts(Mi Mxn)',
-                [f'{float((-1*i) / pow(10, 6)):,.2f}' for i in list(data1[data1['component'] == 'Discounts']['forecast_number'])],
+                [f'{float((-1 * i) / pow(10, 6)):,.2f}' for i in
+                 list(data1[data1['component'] == 'Discounts']['forecast_number'])],
                 key="dis_select"
             )
 
@@ -267,7 +330,7 @@ def main():
         with da_col1:
             da_option = st.selectbox(
                 'Depreciation Amortization(Mi Mxn)',
-                [f'{float((-1*i) / pow(10, 6)):,.2f}' for i in
+                [f'{float((-1 * i) / pow(10, 6)):,.2f}' for i in
                  list(data1[data1['component'] == 'Depreciation Amortization']['forecast_number'])],
                 key="DA_select"
             )
@@ -303,7 +366,7 @@ def main():
         with la_col1:
             la_option = st.selectbox(
                 'Cuentas Mayor(Mi Mxn)',
-                [f'{float((-1*i) / pow(10, 6)):,.2f}' for i in
+                [f'{float((-1 * i) / pow(10, 6)):,.2f}' for i in
                  list(data1[data1['component'] == 'Ledger Account']['forecast_number'])],
                 key="la_select"
             )
