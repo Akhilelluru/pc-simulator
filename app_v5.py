@@ -40,21 +40,20 @@ def main():
     # get filtered data
     dropdown_data = data.loc[data.component == 'NI', ['year', 'le', 'society', 'month']].drop_duplicates()
 
-    hide_streamlit_style = """
-    <style>
-    .css-12oz5g7 {padding: 1rem 1rem 10rem;}
-    </style>
-    """
-
     # title
     st.title(title)
-    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
     with st.sidebar:
         # side bar class (CSS).
         st.markdown(
             """
             <style>
+            .css-12oz5g7 {padding: 1rem 1rem 10rem;}
+            .css-hxt7ib {
+                padding-top: 0rem;
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
             .container {
                 display: flex;
             }
@@ -139,7 +138,8 @@ def main():
             month = month_selectbox
             year = yr_selectbox
             # store the values in session, once "Submit" button clicked
-            st.session_state['society'], st.session_state['le'], st.session_state['month'], st.session_state['year']= society, le, month, year
+            st.session_state['society'], st.session_state['le'], st.session_state['month'], st.session_state[
+                'year'] = society, le, month, year
 
     # re-intializing the drivers input, if "submit" button is clicked
     if input_submitted:
@@ -155,10 +155,12 @@ def main():
 
     if input_submitted or st.session_state.button_clicked:
         # fetch from the session
-        society, le, month, year = st.session_state['society'], st.session_state['le'], st.session_state['month'], st.session_state['year']
+        society, le, month, year = st.session_state['society'], st.session_state['le'], st.session_state['month'], \
+                                   st.session_state['year']
 
         # filter based on current selection
-        data1 = data[(data['society'] == society) & (data['le'] == le) & (data['month'] == month) & (data['year'] == year)]
+        data1 = data[
+            (data['society'] == society) & (data['le'] == le) & (data['month'] == month) & (data['year'] == year)]
 
         # write parameters as label
         # param (CSS).
@@ -206,9 +208,6 @@ def main():
         # horzontal line to divide param with drivers
         st.markdown("""___""")
         st.caption("Adjust Drivers & Calculate P.C.")
-
-        def display(x):
-            return
 
         # Beer Sales
         bs_col1, bs_col2, bs_col3 = st.columns([1.5, 1, 1.5])
@@ -420,12 +419,13 @@ def main():
 
         # push to db
         with pc_col1:
-            # push to db
-            print('data pushed to dB successfully.')
-            st.button(label="Push to dB Table", help="click to push finalize data to table.",
-                      # on_click=insert_to_table,
+            # push to db if month is 12
+            if month == 12:
+                print('data pushed to dB successfully.')
+                st.button(label="Push to dB Table", help="click to push finalize data to table.",
+                          # on_click=insert_to_table,
 
-                      )
+                          )
         # pc download
         with pc_col2:
             # export df
@@ -449,6 +449,18 @@ def main():
             pc = (ebitda / ni_final)
             print(pc)
             st.metric(label="Profit Coefficient", value=f'{pc:.2%}')
+        #
+        # #######
+        #
+        # sample_qry = f"select left(society, 4) as society_id, year, month," \
+        #              f" pp_001001 as NI, pp_006001 as Beer_Sales " \
+        #              f"from [abi_stg].[mx_tax_prof_coef_nominal_income]" \
+        #              f"where year = {year} and month = {int(le[0])} and left(society, 4) = {society}"
+        # prev_month_sc_data = read_data(sample_qry, sql_conn)
+        # print(f'test--{prev_month_sc_data}')
+        # print(data1)
+        #
+        # qry2 = f""
 
 
 if __name__ == '__main__':
