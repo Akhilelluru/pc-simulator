@@ -23,8 +23,8 @@ def init_connection():
 
 
 # Perform query.
-# Uses st.experimental_memo to only rerun when the query changes or after 10 min.
-@st.experimental_memo(ttl=600)
+# Uses st.experimental_memo, only rerun when the query changes or after 10 min.
+@st.experimental_memo(persist="disk")
 def read_data(_query, _conn):
     return pd.read_sql_query(_query, _conn)
 
