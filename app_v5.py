@@ -1,13 +1,8 @@
-from collections import Counter
+# from datetime import datetime
 import numpy as np
-import pandas as pd
-from datetime import datetime
-import pyodbc
-import streamlit as st
-from PIL import Image
 import base64
-from io import BytesIO
-from src.config import SQL_QRY
+from src.config import SQL_QRY, COUNTRY, DLTTM, DLTDT
+from src.util import *
 
 # Fixing the format of number in pandas DataFrames
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
@@ -18,70 +13,6 @@ title = 'Tax Simulator'
 # logo
 LOGO_IMG = 'image/Ab-inbev_logo.jfif'
 
-## title & heading using markdown.
-st.markdown(
-    """
-    <style>
-    .container {
-        display: flex;
-    }
-    .logo-text {
-        font-weight: 700 !important;
-        font-size: 50px !important;
-        color: #151414 !important;
-        padding-left: 75px !important;
-        padding-top: 1px;
-    }
-    .logo-img {
-        height: 60px;
-        width: auto;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    f"""
-    <div class="container">
-        <img class="logo-img" src="data:image/png;base64,{base64.b64encode(open(LOGO_IMG, "rb").read()).decode()}">
-        <p class="logo-text">{title}</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-
-# Initialize connection.
-# Uses st.experimental_singleton to only run once.
-@st.experimental_singleton
-def init_connection():
-    return pyodbc.connect(
-        "DRIVER={ODBC Driver 17 for SQL Server};SERVER="
-        + st.secrets["server"]
-        + ";DATABASE="
-        + st.secrets["database"]
-        + ";UID="
-        + st.secrets["username"]
-        + ";PWD="
-        + st.secrets["password"]
-    )
-
-# Perform query.
-# Uses st.experimental_memo to only rerun when the query changes or after 10 min.
-@st.experimental_memo(ttl=600)
-def read_data(_query, _conn):
-    return pd.read_sql_query(_query, _conn)
-
-# filter data
-def filter_data(df, key = {}):
-    if not key:
-        tmp_df = df.copy()
-    else:
-        tmp_df = df.loc[(df[list(key)] == pd.Series(key)).all(axis=1)]
-    print(df.shape, tmp_df.shape, key)
-    return tmp_df
-
 # Call back variable initialization for Input submit Button
 if "button_clicked" not in st.session_state:
     st.session_state["button_clicked"] = False
@@ -89,55 +20,14 @@ if "button_clicked" not in st.session_state:
 if "drivers_clicked" not in st.session_state:
     st.session_state["drivers_clicked"] = False
 
+
 # inputs call-back function
 def inputs_callback():
     st.session_state.button_clicked = True
 
+
 def drivers_callback():
     st.session_state.drivers_clicked = True
-
-def derived_variables_calc(d):
-    d["Nominal Income"] = d["Beer Sales"] + d["Other Incomes"]
-    d["Net Revenue"] = d["Nominal Income"] - d["Discounts"]
-    d["MACO"] = d["Net Revenue"] - d["Cost"]
-    d["EBITDA"] = d["MACO"] - d["Expenses"]
-    d["EBT"] = d["EBITDA"] - (d["Depreciation Amortization"] +
-                              d["Cuentas Mayor"] + d["Inflationary Adjustments"] + d["Other Expenses"])
-    d["PC"] = d["EBT"] / d["Nominal Income"]
-
-    return d
-
-
-def results_df_creation(selected_data, adjusted_data):
-    # create dummy dataframe with column and index names
-    column_names = ["Model", "Adjustment", "Final"]
-    index_names = ["Beer Sales", "Discounts", "Net Revenue", "Cost", "MACO", "Expenses",
-                   "EBITDA", "Depreciation Amortization", "Other Incomes", "Other Expenses",
-                   "Cuentas Mayor", "Inflationary Adjustments", "EBT", "Nominal Income", "PC"]
-    df = pd.DataFrame(index=index_names, columns=column_names)
-
-    final = Counter(selected_data) + Counter(adjusted_data)
-    selected_data = derived_variables_calc(selected_data)
-    final = derived_variables_calc(final)
-
-    df.loc[:, "Model"] = pd.Series(selected_data)
-    df.loc[:, "Adjustment"] = pd.Series(adjusted_data)
-    df.loc[:, "Final"] = pd.Series(final)
-
-    return df
-
-
-def to_excel(df):
-    output = BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    df.to_excel(writer, index=False, sheet_name='Sheet1')
-    workbook = writer.book
-    worksheet = writer.sheets['Sheet1']
-    format1 = workbook.add_format({'num_format': '0.00'})
-    worksheet.set_column('A:A', None, format1)
-    writer.save()
-    processed_data = output.getvalue()
-    return processed_data
 
 
 def main():
@@ -148,45 +38,98 @@ def main():
     data = read_data(SQL_QRY, sql_conn)
 
     # get filtered data
-    dropdown_data = data.loc[data.component == 'NI', ['le', 'society', 'month']].drop_duplicates()
+    dropdown_data = data.loc[data.component == 'NI', ['year', 'le', 'society', 'month']].drop_duplicates()
 
-    with st.container():
-        col1, col2, col3 = st.columns(3)
+    hide_streamlit_style = """
+    <style>
+    .css-12oz5g7 {padding: 1rem 1rem 10rem;}
+    </style>
+    """
 
-        with col1:
-            le_selectbox = st.selectbox(
-                'LE',
-                options= ['select'] + sorted(dropdown_data['le'].unique(), reverse=True),
-                key='le_sbox'
-            )
+    # title
+    st.title(title)
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-        with col2:
-            if le_selectbox != 'select':
-                le_box_value = st.session_state['le_sbox']
-                print(le_box_value)
-                print(f'second filter, {dropdown_data.columns}')
-                sc_selectbox_options = ['select'] + sorted(dropdown_data[dropdown_data['le'] == le_box_value]['society'].unique(), reverse=False)
-            else:
-                sc_selectbox_options = ['select']
+    with st.sidebar:
+        # side bar class (CSS).
+        st.markdown(
+            """
+            <style>
+            .container {
+                display: flex;
+            }
+            .logo-img {
+                height: 60px;
+                width: auto;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+        # sidebar image
+        st.markdown(
+            f"""
+            <div class="container">
+                <img class="logo-img" src="data:image/png;base64,{base64.b64encode(open(LOGO_IMG, "rb").read()).decode()}"> 
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-            sc_selectbox = st.selectbox(
-                'Society',
-                options= sc_selectbox_options,
-                key='sc_sbox'
-            )
+        # sidebar title
+        st.sidebar.title("Parameters")
 
-        with col3:
-            if le_selectbox != 'select':
-                le_box_value = st.session_state['le_sbox']
-                month_selectbox_options = ['select'] + sorted(dropdown_data[dropdown_data['le'] == le_box_value]['month'].unique(), reverse=True)
-            else:
-                month_selectbox_options = ['select']
+        # le select box
+        yr_selectbox = st.selectbox(
+            'Year',
+            options=['select'] + sorted(dropdown_data['year'].unique(), reverse=True),
+            key='yr_sbox'
+        )
 
-            month_selectbox = st.selectbox(
-                'Month',
-                options=month_selectbox_options,
-                key='month_sbox'
-            )
+        # le select box
+        if yr_selectbox != 'select':
+            yr_box_value = st.session_state['yr_sbox']
+            le_selectbox_options = ['select'] + sorted(
+                dropdown_data[dropdown_data['year'] == yr_box_value]['le'].unique(), reverse=True)
+        else:
+            le_selectbox_options = ['select']
+        le_selectbox = st.selectbox(
+            'LE',
+            options=le_selectbox_options,
+            key='le_sbox'
+        )
+
+        # month select box -- based on LE selection
+        if le_selectbox != 'select':
+            yr_box_value = st.session_state['yr_sbox']
+            le_box_value = st.session_state['le_sbox']
+            month_selectbox_options = ['select'] + sorted(
+                dropdown_data[(dropdown_data['year'] == yr_box_value) & (dropdown_data['le'] == le_box_value)][
+                    'month'].unique(), reverse=True)
+        else:
+            month_selectbox_options = ['select']
+
+        month_selectbox = st.selectbox(
+            'Month',
+            options=month_selectbox_options,
+            key='month_sbox'
+        )
+
+        # society select box -- based on LE selection
+        if le_selectbox != 'select':
+            yr_box_value = st.session_state['yr_sbox']
+            le_box_value = st.session_state['le_sbox']
+            sc_selectbox_options = ['select'] + sorted(
+                dropdown_data[(dropdown_data['year'] == yr_box_value) & (dropdown_data['le'] == le_box_value)][
+                    'society'].unique(), reverse=False)
+        else:
+            sc_selectbox_options = ['select']
+
+        sc_selectbox = st.selectbox(
+            'Society',
+            options=sc_selectbox_options,
+            key='sc_sbox'
+        )
 
         # Every form must have a submit button.
         input_submitted = st.button("Submit", on_click=inputs_callback)
@@ -194,10 +137,11 @@ def main():
             society = sc_selectbox
             le = le_selectbox
             month = month_selectbox
+            year = yr_selectbox
             # store the values in session, once "Submit" button clicked
-            st.session_state['society'], st.session_state['le'], st.session_state['month'] = society, le, month
+            st.session_state['society'], st.session_state['le'], st.session_state['month'], st.session_state['year']= society, le, month, year
 
-    # Reintializing the drivers input
+    # re-intializing the drivers input, if "submit" button is clicked
     if input_submitted:
         st.session_state.BS = 0
         st.session_state.OI = 0
@@ -209,66 +153,119 @@ def main():
         st.session_state.IA = 0
         st.session_state.LA = 0
 
-    # with st.form(key="drivers", clear_on_submit=False):
     if input_submitted or st.session_state.button_clicked:
         # fetch from the session
-        society, le, month = st.session_state['society'], st.session_state['le'], st.session_state['month']
+        society, le, month, year = st.session_state['society'], st.session_state['le'], st.session_state['month'], st.session_state['year']
 
         # filter based on current selection
-        data1 = data[(data['society'] == society) & (data['le'] == le) & (data['month'] == month)]
+        data1 = data[(data['society'] == society) & (data['le'] == le) & (data['month'] == month) & (data['year'] == year)]
+
+        # write parameters as label
+        # param (CSS).
+        st.markdown(
+            """
+            <style>
+            .param-container {
+                    display: flex;
+                    /*border: 1px solid #DCDCDC;*/
+                    border-radius: 10px;
+            }
+            .param-label {
+                background-color: #EEEEEE;
+                border: 1px solid #DCDCDC;
+                padding: 1.5% 5% 1.5% 5%;
+                border-radius: 10px
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+        st.caption("Parameters selected")
+        st.markdown(
+            f"""
+            <div class="param-container"> 
+                <div class="param-label">
+                    <label>Year:&nbsp</label><b>{year}</b>
+                </div>&nbsp&nbsp         
+                <div class="param-label">
+                    <label>LE:&nbsp</label><b>{le}</b>
+                </div>&nbsp&nbsp     
+                <div class="param-label">
+                    <label>Society:&nbsp</label><b>{society}</b>
+                </div>&nbsp&nbsp                
+                <div class="param-label">
+                    <label>Month:&nbsp</label><b>{month}</b>
+                </div>&nbsp&nbsp
+            </div>
+            
+            """,
+            unsafe_allow_html=True
+        )
+        st.caption("")
+        # horzontal line to divide param with drivers
+        st.markdown("""___""")
+        st.caption("Adjust Drivers & Calculate P.C.")
+
+        def display(x):
+            return
 
         # Beer Sales
         bs_col1, bs_col2, bs_col3 = st.columns([1.5, 1, 1.5])
         with bs_col1:
             bs_option = st.selectbox(
                 'Beer Sales(Mi Mxn)',
-                [f'{float(i / pow(10, 6)):,.2f}' for i in
-                 list(data1[data1['component'] == 'Beer_Sales']['forecast_number'])],
+                [i for i in list(data1[data1['component'] == 'Beer_Sales']['forecast_number'])],
+                format_func=lambda x: f'{float(x / pow(10, 6)):,.2f}',
                 key="BS_select"
             )
 
         with bs_col2:
-            bs_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="BS", format="%.4f")
+            bs_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="BS", step=1.0, format="%.4f")
 
         with bs_col3:
-            bs_final = float(bs_option.replace(',', '')) + bs_adjusted_amount
-            st.metric(label="Final Beer Sales(Mi Mxn)", value=f'{bs_final:,.2f}')
+            bs_adjusted_amount = bs_adjusted_amount * pow(10, 6)
+            bs_final = bs_option + bs_adjusted_amount
+            st.metric(label="Final Beer Sales(Mi Mxn)", value=f'{float(bs_final / pow(10, 6)):,.2f}')
 
         # other Incomes
         oi_col1, oi_col2, oi_col3 = st.columns([1.5, 1, 1.5])
         with oi_col1:
             oi_option = st.selectbox(
                 'Other Income(Mi Mxn)',
-                [f'{float(i / pow(10, 6)):,.2f}' for i in
+                [i for i in
                  list(np.array(data1[data1['component'] == 'NI']['forecast_number']) -
                       np.array(data1[data1['component'] == 'Beer_Sales']['forecast_number']))],
+                format_func=lambda x: f'{float(x / pow(10, 6)):,.2f}',
                 key="OI_select"
             )
 
         with oi_col2:
-            oi_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="OI", format="%.4f")
+            oi_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="OI", step=1.0, format="%.4f")
 
         with oi_col3:
-            oi_final = float(oi_option.replace(',', '')) + oi_adjusted_amount
-            st.metric(label="Final Other Income(Mi Mxn)", value=f'{oi_final:,.2f}')
+            oi_adjusted_amount = oi_adjusted_amount * pow(10, 6)
+            oi_final = float(oi_option) + oi_adjusted_amount
+            st.metric(label="Final Other Income(Mi Mxn)", value=f'{float(oi_final / pow(10, 6)):,.2f}')
 
-        # Cost
-        cost_col1, cost_col2, cost_col3 = st.columns([1.5, 1, 1.5])
+        # Costs
+        costs_col1, costs_col2, costs_col3 = st.columns([1.5, 1, 1.5])
 
-        with cost_col1:
-            cost_option = st.selectbox(
-                'Cost(Mi Mxn)',
-                [f'{float(i / pow(10, 6)):,.2f}' for i in
-                 list(data1[data1['component'] == 'Costs']['forecast_number'])],
-                key="cost_select"
+        with costs_col1:
+            costs_option = st.selectbox(
+                'Costs(Mi Mxn)',
+                [i for i in list(data1[data1['component'] == 'Costs']['forecast_number'])],
+                format_func=lambda x: f'{float(x / pow(10, 6)):,.2f}',
+                key="costs_select"
             )
 
-        with cost_col2:
-            cost_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="COST", format="%.4f")
+        with costs_col2:
+            costs_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="COST", step=1.0, format="%.4f")
 
-        with cost_col3:
-            cost_final = float(cost_option.replace(',', '')) + cost_adjusted_amount
-            st.metric(label="Final Cost(Mi Mxn)", value=f'{cost_final:,.2f}')
+        with costs_col3:
+            costs_adjusted_amount = costs_adjusted_amount * pow(10, 6)
+            costs_final = float(costs_option) + costs_adjusted_amount
+            st.metric(label="Final Costs(Mi Mxn)", value=f'{float(costs_final / pow(10, 6)):,.2f}')
 
         # Expenses
         exp_col1, exp_col2, exp_col3 = st.columns([1.5, 1, 1.5])
@@ -276,17 +273,18 @@ def main():
         with exp_col1:
             exp_option = st.selectbox(
                 'Expenses(Mi Mxn)',
-                [f'{float(i / pow(10, 6)):,.2f}' for i in
-                 list(data1[data1['component'] == 'Expenses']['forecast_number'])],
+                [i for i in list(data1[data1['component'] == 'Expenses']['forecast_number'])],
+                format_func=lambda x: f'{float(x / pow(10, 6)):,.2f}',
                 key="exp_select"
             )
 
         with exp_col2:
-            exp_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="EXP", format="%.4f")
+            exp_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="EXP", step=1.0, format="%.4f")
 
         with exp_col3:
-            exp_final = float(exp_option.replace(',', '')) + exp_adjusted_amount
-            st.metric(label="Final Expenses(Mi Mxn)", value=f'{exp_final:,.2f}')
+            exp_adjusted_amount = exp_adjusted_amount * pow(10, 6)
+            exp_final = float(exp_option) + exp_adjusted_amount
+            st.metric(label="Final Expenses(Mi Mxn)", value=f'{float(exp_final / pow(10, 6)):,.2f}')
 
         # Discounts
         dis_col1, dis_col2, dis_col3 = st.columns([1.5, 1, 1.5])
@@ -294,17 +292,18 @@ def main():
         with dis_col1:
             dis_option = st.selectbox(
                 'Discounts(Mi Mxn)',
-                [f'{float((-1 * i) / pow(10, 6)):,.2f}' for i in
-                 list(data1[data1['component'] == 'Discounts']['forecast_number'])],
+                [i for i in list(data1[data1['component'] == 'Discounts']['forecast_number'])],
+                format_func=lambda x: f'{float(x / pow(10, 6)):,.2f}',
                 key="dis_select"
             )
 
             with dis_col2:
-                dis_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="DIS", format="%.4f")
+                dis_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="DIS", step=1.0, format="%.4f")
 
             with dis_col3:
-                dis_final = float(dis_option.replace(',', '')) + dis_adjusted_amount
-                st.metric(label="Final Discounts(Mi Mxn)", value=f'{dis_final:,.2f}')
+                dis_adjusted_amount = dis_adjusted_amount * pow(10, 6)
+                dis_final = float(dis_option) + dis_adjusted_amount
+                st.metric(label="Final Discounts(Mi Mxn)", value=f'{float(dis_final / pow(10, 6)):,.2f}')
 
         # Other Expenses
         oth_exp_col1, oth_exp_col2, oth_exp_col3 = st.columns([1.5, 1, 1.5])
@@ -312,17 +311,18 @@ def main():
         with oth_exp_col1:
             oth_exp_option = st.selectbox(
                 'Other Expenses(Mi Mxn)',
-                [f'{float(i / pow(10, 6)):,.2f}' for i in
-                 list(data1[data1['component'] == 'Other Expenses']['forecast_number'])],
+                [i for i in list(data1[data1['component'] == 'Other Expenses']['forecast_number'])],
+                format_func=lambda x: f'{float(x / pow(10, 6)):,.2f}',
                 key="oth_exp_select"
             )
 
         with oth_exp_col2:
-            oth_exp_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="OTH_EXP", format="%.4f")
+            oth_exp_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="OTH_EXP", step=1.0, format="%.4f")
 
         with oth_exp_col3:
-            oth_exp_final = float(oth_exp_option.replace(',', '')) + oth_exp_adjusted_amount
-            st.metric(label="Final Other Expenses(Mi Mxn)", value=f'{oth_exp_final:,.2f}')
+            oth_exp_adjusted_amount = oth_exp_adjusted_amount * pow(10, 6)
+            oth_exp_final = float(oth_exp_option) + oth_exp_adjusted_amount
+            st.metric(label="Final Other Expenses(Mi Mxn)", value=f'{float(oth_exp_final / pow(10, 6)):,.2f}')
 
         # Depreciation & Amortization
         da_col1, da_col2, da_col3 = st.columns([1.5, 1, 1.5])
@@ -330,17 +330,19 @@ def main():
         with da_col1:
             da_option = st.selectbox(
                 'Depreciation Amortization(Mi Mxn)',
-                [f'{float((-1 * i) / pow(10, 6)):,.2f}' for i in
+                [i for i in
                  list(data1[data1['component'] == 'Depreciation Amortization']['forecast_number'])],
+                format_func=lambda x: f'{float(x / pow(10, 6)):,.2f}',
                 key="DA_select"
             )
 
         with da_col2:
-            da_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="DA", format="%.4f")
+            da_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="DA", step=1.0, format="%.4f")
 
         with da_col3:
-            da_final = float(da_option.replace(',', '')) + da_adjusted_amount
-            st.metric(label="Final Depreciation Amortization(Mi Mxn)", value=f'{da_final:,.2f}')
+            da_adjusted_amount = da_adjusted_amount * pow(10, 6)
+            da_final = float(da_option) + da_adjusted_amount
+            st.metric(label="Final Depreciation Amortization(Mi Mxn)", value=f'{float(da_final / pow(10, 6)):,.2f}')
 
         # Inflationary Adjustments
         ia_col1, ia_col2, ia_col3 = st.columns([1.5, 1, 1.5])
@@ -348,17 +350,18 @@ def main():
         with ia_col1:
             ia_option = st.selectbox(
                 'Inflationary Adjustments(Mi Mxn)',
-                [f'{float(i / pow(10, 6)):,.2f}' for i in
-                 list(data1[data1['component'] == 'Inflationary Adjustments']['forecast_number'])],
+                [i for i in list(data1[data1['component'] == 'Inflationary Adjustments']['forecast_number'])],
+                format_func=lambda x: f'{float(x / pow(10, 6)):,.2f}',
                 key="IA_select"
             )
 
         with ia_col2:
-            ia_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="IA", format="%.4f")
+            ia_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="IA", step=1.0, format="%.4f")
 
         with ia_col3:
-            ia_final = float(ia_option.replace(',', '')) + ia_adjusted_amount
-            st.metric(label="Final Inflationary Adjustments(Mi Mxn)", value=f'{ia_final:,.2f}')
+            ia_adjusted_amount = ia_adjusted_amount * pow(10, 6)
+            ia_final = float(ia_option) + ia_adjusted_amount
+            st.metric(label="Final Inflationary Adjustments(Mi Mxn)", value=f'{float(ia_final / pow(10, 6)):,.2f}')
 
         # Ledger Accounts
         la_col1, la_col2, la_col3 = st.columns([1.5, 1, 1.5])
@@ -366,70 +369,86 @@ def main():
         with la_col1:
             la_option = st.selectbox(
                 'Cuentas Mayor(Mi Mxn)',
-                [f'{float((-1 * i) / pow(10, 6)):,.2f}' for i in
-                 list(data1[data1['component'] == 'Ledger Account']['forecast_number'])],
+                [i for i in list(data1[data1['component'] == 'Ledger Account']['forecast_number'])],
+                format_func=lambda x: f'{float(x / pow(10, 6)):,.2f}',
                 key="la_select"
             )
 
         with la_col2:
-            la_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="LA", format="%.4f")
+            la_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="LA", step=1.0, format="%.4f")
 
         with la_col3:
-            la_final = float(la_option.replace(',', '')) + la_adjusted_amount
-            st.metric(label="Final Cuentas Mayor(Mi Mxn)", value=f'{la_final:,.2f}')
+            la_adjusted_amount = la_adjusted_amount * pow(10, 6)
+            la_final = float(la_option) + la_adjusted_amount
+            st.metric(label="Final Cuentas Mayor(Mi Mxn)", value=f'{float(la_final / pow(10, 6)):,.2f}')
 
-        # Declare a form and call methods directly on the returned object
-        # drivers_submit_button = st.form_submit_button("Calculate P.C.", on_click=drivers_callback)
-        drivers_submit_button = st.button("Calculate P.C.", on_click=drivers_callback)
+        # draw a line
+        st.markdown("""___""")
 
-        if drivers_submit_button or st.session_state.drivers_clicked:
-            print('submit button clicked!!!')
-            ni_final = bs_final + oi_final
-            ebitda = ni_final - cost_final - exp_final - dis_final - oth_exp_final - da_final - ia_final - la_final
-            pc = 100 * (ebitda / ni_final)
-            print(pc)
+        print(la_option, la_adjusted_amount, la_final)
 
-            selected_data = {
-                "Beer Sales": float(bs_option.replace(',', '')),
-                "Other Incomes": float(oi_option.replace(',', '')),
-                "Cost": float(cost_option.replace(',', '')),
-                "Expenses": float(exp_option.replace(',', '')),
-                "Discounts": float(dis_option.replace(',', '')),
-                "Other Expenses": float(oth_exp_option.replace(',', '')),
-                "Depreciation Amortization": float(da_option.replace(',', '')),
-                "Inflationary Adjustments": float(ia_option.replace(',', '')),
-                "Cuentas Mayor": float(la_option.replace(',', ''))
-            }
-            adjusted_data = {
-                "Beer Sales": bs_adjusted_amount,
-                "Other Incomes": oi_adjusted_amount,
-                "Cost": cost_adjusted_amount,
-                "Expenses": exp_adjusted_amount,
-                "Discounts": dis_adjusted_amount,
-                "Other Expenses": oth_exp_adjusted_amount,
-                "Depreciation Amortization": da_adjusted_amount,
-                "Inflationary Adjustments": ia_adjusted_amount,
-                "Cuentas Mayor": la_adjusted_amount
-            }
+        # Profit Coefficient.
+        selected_data = {
+            "Beer Sales": float(bs_option),
+            "Other Incomes": float(oi_option),
+            "Costs": float(costs_option),
+            "Expenses": float(exp_option),
+            "Discounts": float(dis_option),
+            "Other Expenses": float(oth_exp_option),
+            "Depreciation Amortization": float(da_option),
+            "Inflationary Adjustments": float(ia_option),
+            "Cuentas Mayor": float(la_option)
+        }
+        print(selected_data)
+        adjusted_data = {
+            "Beer Sales": bs_adjusted_amount,
+            "Other Incomes": oi_adjusted_amount,
+            "Costs": costs_adjusted_amount,
+            "Expenses": exp_adjusted_amount,
+            "Discounts": dis_adjusted_amount,
+            "Other Expenses": oth_exp_adjusted_amount,
+            "Depreciation Amortization": da_adjusted_amount,
+            "Inflationary Adjustments": ia_adjusted_amount,
+            "Cuentas Mayor": la_adjusted_amount
+        }
+        # calculations
+        output_df = results_df_creation(selected_data, adjusted_data)
+        df_xlsx = to_excel(output_df)
 
-            output_df = results_df_creation(selected_data, adjusted_data)
+        # columns
+        pc_col1, pc_col2, pc_col3 = st.columns([1.5, 1, 1.5])
 
-            st.dataframe(output_df)
+        # push to db
+        with pc_col1:
+            # push to db
+            print('data pushed to dB successfully.')
+            st.button(label="Push to dB Table", help="click to push finalize data to table.",
+                      # on_click=insert_to_table,
 
-            #
-            # output_encoded = convert_df(output_df)
-            # st.download_button(
-            #     label = "Press to Download",
-            #     data = output_encoded,
-            #     file_name = "file.csv",
-            #     mime = "text/csv",
-            #     key='download-csv'
-            #     )
-
-            df_xlsx = to_excel(output_df)
-            st.download_button(label='📥 Download Current Result',
+                      )
+        # pc download
+        with pc_col2:
+            # export df
+            export_file_name = f'pc_{str(le)}_{str(society)}_{str(month)}.xlsx'
+            st.download_button(label='📥 Download',
                                data=df_xlsx,
-                               file_name='df_test.xlsx')
+                               file_name=export_file_name
+                               )
+
+        # pc value
+        with pc_col3:
+            # pc calculation
+            ni_final = bs_final + oi_final
+            deduction_final = (costs_final + exp_final + (-1 * dis_final) + oth_exp_final +
+                               (da_final if da_final > 0 else (-1 * da_final)) +
+                               (ia_final if ia_final > 0 else (-1 * ia_final)) +
+                               (la_final if la_final > 0 else (-1 * la_final))
+                               )
+            ebitda = ni_final - deduction_final
+            print(f'ni_final: {ni_final}, deduction_final: {deduction_final}')
+            pc = (ebitda / ni_final)
+            print(pc)
+            st.metric(label="Profit Coefficient", value=f'{pc:.2%}')
 
 
 if __name__ == '__main__':

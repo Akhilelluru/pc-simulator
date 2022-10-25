@@ -1,5 +1,10 @@
 # sql query to pull data *
 # https://stackoverflow.com/questions/5243596/python-sql-query-string-formatting
+from datetime import datetime
+
+COUNTRY = 'MEXICO'
+DLTDT = datetime.now(tz=None).strftime("%Y-%m-%d")
+DLTTM = datetime.now(tz=None).strftime("%H-%M-%S")
 
 SQL_QRY = ("select "
                "src.country, src.society, src.business_unity, src.year, src.month, "
