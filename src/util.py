@@ -1,6 +1,8 @@
 # import library
 import numpy as np
 import pandas as pd
+from sqlalchemy.engine import URL
+from sqlalchemy import create_engine
 import pyodbc
 import streamlit as st
 from collections import Counter
@@ -11,16 +13,23 @@ from io import BytesIO
 # Uses st.experimental_singleton to only run once.
 @st.experimental_singleton
 def init_connection():
-    return pyodbc.connect(
-        "DRIVER={ODBC Driver 17 for SQL Server};SERVER="
-        + st.secrets["server"]
-        + ";DATABASE="
-        + st.secrets["database"]
-        + ";UID="
-        + st.secrets["username"]
-        + ";PWD="
-        + st.secrets["password"]
+    connection_url = URL.create(
+        "mssql+pyodbc",
+        username=st.secrets['username'],
+        password=st.secrets['password'],
+        host=st.secrets['server'],
+        database=st.secrets['database'],
+        query={
+            "driver": "ODBC Driver 17 for SQL Server",
+            "autocommit": "True",
+        },
     )
+    engine = create_engine(connection_url).execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
+    sql_engine = create_engine(connection_url, echo=True)
+    conn = sql_engine.raw_connection(sql_engine)
+    return conn, sql_engine
 
 
 # Perform query.
@@ -90,12 +99,7 @@ def results_df_creation(selected_data, adjusted_data):
     return df
 
 
-def to_excel(df):
-    """
-
-    :param df:
-    :return: DataFrame
-    """
+def format_download_data(df):
     # format df output
     tmp_df = df.copy()
 
@@ -111,11 +115,24 @@ def to_excel(df):
 
     # concat
     op_df = pd.concat([driver_df, pc_df])
-    print(op_df)
+    return op_df
+
+
+def to_excel(df, index=True):
+    """
+
+    :param df:
+    :return: DataFrame
+    """
     # output
     output = BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    op_df.to_excel(writer, index=True, sheet_name='Sheet1')
+    df.to_excel(writer, index=index, sheet_name='Sheet1')
     writer.save()
     processed_data = output.getvalue()
     return processed_data
+
+
+def insert_data_to_dB(df, table_name, schema_name, data_type, conn, mode='append'):
+    df.to_sql(table_name, conn, schema=schema_name, dtype=data_type, if_exists=mode, index=False)
+    print('data pushed successfully.')
