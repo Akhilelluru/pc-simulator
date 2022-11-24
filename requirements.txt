@@ -3,3 +3,4 @@ pandas==1.5.1
 numpy==1.23.4
 pyodbc
 xlsxwriter==3.0.3
+sqlalchemy==1.4.44
