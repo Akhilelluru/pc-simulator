@@ -5,6 +5,7 @@ from sqlalchemy.dialects.mssql import VARCHAR, INTEGER, NUMERIC, DATE, TIME
 from src.config import *
 from src.util import *
 
+
 # Fixing the format of number in pandas DataFrames
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 
@@ -34,7 +35,7 @@ def drivers_callback():
 def main():
     # initialize connection
     sql_conn, sql_engine = init_connection()
-
+    
     # read query # abi_stg.mx_tax_prof_coef_results
     all_data_except_bs_df = read_data(SQL_QRY, sql_conn)
 
@@ -60,20 +61,9 @@ def main():
     # get filtered data
     dropdown_data = data.loc[data.component == 'NI', ['year', 'le', 'society', 'month']].drop_duplicates()
 
-    title
+    # title
     st.title(title)
-    # st.markdown(
-    #     """
-    #     <style>
-    #     .body { margin: 0; font-family: Arial, Helvetica, sans-serif;}
-    #     .header{padding: 10px 16px; background:#555; color: #f1f1f1; position:fixed;top:0;}
-    #      .sticky { position: fixed; top: 0; width: 100%;}
-    #      </style>""", unsafe_allow_html=True)
-    # st.markdown(
-    #     f"""
-    #     <div class="header" id="myHeader"> {title} </div>
-    #     """, unsafe_allow_html=True
-    # )
+
     with st.sidebar:
         # side bar class (CSS).
         st.markdown(
@@ -192,6 +182,9 @@ def main():
         # filter based on current selection
         d_filter = (data['society'] == society) & (data['le'] == le) & (data['month'] == month) & (data['year'] == year)
         data1 = data.loc[d_filter, :].set_index('model_type')
+
+        # # create col for driver selectbox
+        # data1['type_n_val'] = data1['model_type'] + ": " + data1['forecast_number'].astype('str')
 
         # write parameters as label
         # param (CSS).
@@ -417,6 +410,7 @@ def main():
         # Taxable Income
         ti_col1, ti_col2, ti_col3 = st.columns([1.5, 1, 1.5])
 
+
         with ti_col2:
             # Transfer Price Adjustment
             adjustment_final = (
@@ -430,6 +424,7 @@ def main():
             # Taxable Income
             deduction_final = (dis_final + costs_final + exp_final + da_final +
                                oth_exp_final + la_final + ia_final)
+
             ti_final = ni_final + deduction_final
             st.metric(label="Final Taxable Income(Mi Mxn)", value=f'{float(ti_final / pow(10, 6)):,.2f}')
 
@@ -611,6 +606,7 @@ def main():
             pc = (ti_final / ni_final)
             # print(pc)
             st.metric(label="Profit Coefficient", value=f'{pc:.2%}')
+
 
 
 if __name__ == '__main__':
