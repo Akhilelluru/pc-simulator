@@ -1,11 +1,10 @@
 # from datetime import datetime
 import numpy as np
 import base64
-
-import pandas as pd
-
-from src.config import SQL_QRY, COUNTRY, DLTTM, DLTDT, NI_SPLIT_SQL_QRY
+from sqlalchemy.dialects.mssql import VARCHAR, INTEGER, NUMERIC, DATE, TIME
+from src.config import *
 from src.util import *
+
 
 # Fixing the format of number in pandas DataFrames
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
@@ -35,17 +34,26 @@ def drivers_callback():
 
 def main():
     # initialize connection
-    sql_conn = init_connection()
-
+    sql_conn, sql_engine = init_connection()
+    
     # read query # abi_stg.mx_tax_prof_coef_results
     all_data_except_bs_df = read_data(SQL_QRY, sql_conn)
+
+    # get society id and name
+    sc_cols = ['society', 'business_unity']
+    sc_id_name_dict = {sc[0]: sc[1] for sc in all_data_except_bs_df[sc_cols].drop_duplicates().values}
+    print(sc_id_name_dict)
 
     # read query # abi_edw.mx_tax_prof_coef_nominal_income_split
     bs_df = read_data(NI_SPLIT_SQL_QRY, sql_conn)
 
+    # read query #abi_edw.mx_tax_prof_coef_results_final_clean
+    clean_df = read_data(CLEAN_DATA_QRY, sql_conn)
+    print(clean_df['component'].unique())
+
     # complete data
     data = pd.concat([all_data_except_bs_df, bs_df], ignore_index=True)
-    # print(data['component'].unique())
+    print(data['component'].unique())
 
     # create col for driver selectbox
     data['type_n_val'] = data['model_type'] + ": " + data['forecast_number'].astype('str')
@@ -244,28 +252,6 @@ def main():
             bs_final = float(bs_option.split(": ")[1]) + bs_adjusted_amount
             st.metric(label="Final Beer Sales(Mi Mxn)", value=f'{float(bs_final / pow(10, 6)):,.2f}')
 
-        # # other Incomes
-        # oi_col1, oi_col2, oi_col3 = st.columns([1.5, 1, 1.5])
-        # oi_values = ((data1[data1['component'] == 'NI']['forecast_number']) - \
-        #              (data1[data1['component'] == 'Beer_Sales']['forecast_number'])).reset_index().astype(str).apply(
-        #     ': '.join, axis=1)
-        #
-        # with oi_col1:
-        #     oi_option = st.selectbox(
-        #         'Other Income(Mi Mxn)',
-        #         [i for i in
-        #          list(oi_values)],
-        #         format_func=format_func,
-        #         key="OI_select"
-        #     )
-        #
-        # with oi_col2:
-        #     oi_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="OI", step=1.0, format="%.4f")
-        #
-        # with oi_col3:
-        #     oi_adjusted_amount = oi_adjusted_amount * pow(10, 6)
-        #     oi_final = float(oi_option.split(": ")[1]) + oi_adjusted_amount
-        #     st.metric(label="Final Other Income(Mi Mxn)", value=f'{float(oi_final / pow(10, 6)):,.2f}')
         # Discounts
         dis_col1, dis_col2, dis_col3 = st.columns([1.5, 1, 1.5])
 
@@ -284,6 +270,7 @@ def main():
                 dis_adjusted_amount = dis_adjusted_amount * pow(10, 6)
                 dis_final = float(dis_option.split(": ")[1]) + dis_adjusted_amount
                 st.metric(label="Final Discounts(Mi Mxn)", value=f'{float(dis_final / pow(10, 6)):,.2f}')
+
         # Costs
         costs_col1, costs_col2, costs_col3 = st.columns([1.5, 1, 1.5])
 
@@ -423,11 +410,21 @@ def main():
         # Taxable Income
         ti_col1, ti_col2, ti_col3 = st.columns([1.5, 1, 1.5])
 
+
+        with ti_col2:
+            # Transfer Price Adjustment
+            adjustment_final = (
+                        ni_adjusted_amount + dis_adjusted_amount + costs_adjusted_amount + exp_adjusted_amount +
+                        da_adjusted_amount + oth_exp_adjusted_amount + la_adjusted_amount + ia_adjusted_amount
+            )
+            tpa_final = adjustment_final
+            st.metric(label="Transfer Price Adjustment(Mi Mxn)", value=f'{float(tpa_final / pow(10, 6)):,.2f}')
+
         with ti_col3:
             # Taxable Income
             deduction_final = (dis_final + costs_final + exp_final + da_final +
                                oth_exp_final + la_final + ia_final)
-            print(f'deductions{deduction_final}, NI: {ni_final}')
+
             ti_final = ni_final + deduction_final
             st.metric(label="Final Taxable Income(Mi Mxn)", value=f'{float(ti_final / pow(10, 6)):,.2f}')
 
@@ -467,9 +464,112 @@ def main():
             "Inflationary Adjustments": ia_adjusted_amount,
             "Cuentas Mayor": la_adjusted_amount
         }
+
         # calculations
         output_df = results_df_creation(selected_data, adjusted_data)
-        op_df = to_excel(output_df)
+        binary_df = format_download_data(output_df)
+        op_df = to_excel(binary_df)
+
+        # prepare data for dB push, only if month is december
+        if month == 12:
+            # selected model types for different drivers.
+            selected_values_dict = {
+                'Beer_Sales': bs_type,
+                'NI': ni_type,
+                'Costs': cost_type,
+                'Expenses': exp_type,
+                'Discounts': dis_type,
+                'Other Expenses': oth_exp_type,
+                'Ledger Account': la_type,
+                'Depreciation Amortization': da_type,
+                'Inflationary Adjustments': ia_type
+            }
+            # final values ( store only for the month of dec)
+            final_data_dict = {
+                'Beer_Sales': bs_final,
+                'NI': ni_final,
+                'Costs': costs_final,
+                'Expenses': exp_final,
+                'Discounts': dis_final,
+                'Other Expenses': oth_exp_final,
+                'Ledger Account': la_final,
+                'Depreciation Amortization': da_final,
+                'Inflationary Adjustments': ia_final
+            }
+            # convert selected_values_dict to df
+            selected_values_df = pd.DataFrame(selected_values_dict.items(), columns=['component', 'model_type'])
+            # add sc and le
+            selected_values_df['society'] = society
+            selected_values_df['le'] = le
+            print(data['component'].unique())
+
+            # forecast values of drivers based on model type selection
+            forecast_df = data.merge(selected_values_df, how='inner', on=['society', 'component', 'model_type', 'le'])
+            # rename col
+            forecast_df.rename({'forecast_number': 'value'}, axis=1, inplace=True)
+            # update december month values based on adjustments
+            forecast_df.loc[forecast_df.month == month, 'value'] = forecast_df['component'].map(final_data_dict)
+
+            # actual values of drivers based on model type selection
+            actual_df = clean_df.merge(selected_values_df, how='inner', on=['society', 'component', 'le'])
+
+            # merge actual and forecast
+            prep_df = pd.concat([actual_df, forecast_df], ignore_index=True)
+            # select cols
+            prep_cols = ['society', 'component', 'le', 'year', 'month', 'model_type', 'value']
+            prep_df = prep_df[prep_cols]
+
+            # get monthly values
+            sort_cols = ['society', 'component', 'year', 'month', 'model_type']
+            prep_df = prep_df.sort_values(by=sort_cols)
+            grp_cols = ['society', 'component', 'model_type']
+            prep_df['value_diff'] = prep_df.groupby(grp_cols)['value'].diff()
+
+            # le
+            current_le_month, _, _ = le.partition('+')
+            prep_df['le'] = np.where(prep_df['month'] == int(current_le_month), 'actual', prep_df['le'])
+
+            # filter (current month + forecast months)
+            month_filter = (prep_df['month'] >= int(current_le_month))
+            prep_df = prep_df[month_filter]
+
+            # derive metric cols
+            prep_df['forecast_number'] = np.where(prep_df['le'] != 'actual', prep_df.value, np.nan)
+            prep_df['monthly_forecast'] = np.where(prep_df['le'] != 'actual', prep_df.value_diff, np.nan)
+            prep_df['actual_number'] = np.where(prep_df['le'] == 'actual', prep_df.value, np.nan)
+            prep_df['monthly_actual'] = np.where(prep_df['le'] == 'actual', prep_df.value_diff, np.nan)
+
+            # map society with name
+            prep_df['business_unity'] = prep_df['society'].map(sc_id_name_dict)
+
+            # add cols
+            prep_df['country'] = COUNTRY
+            prep_df['DLTDT'] = DLTDT
+            prep_df['DLTTM'] = DLTTM
+
+            # final cols for dB
+            db_cols = ['country', 'society', 'business_unity', 'year', 'month', 'component', 'forecast_number',
+                       'monthly_forecast', 'actual_number', 'monthly_actual', 'DLTDT', 'DLTTM', 'le']
+            sql_table_df = prep_df[db_cols]
+            # column types for sql table.
+            col_types = {"country": VARCHAR(25),
+                         "society": VARCHAR(50),
+                         "business_unity": VARCHAR(50),
+                         "year": INTEGER,
+                         "month": INTEGER,
+                         "component": VARCHAR(25),
+                         "forecast_number": NUMERIC(17, 4),
+                         "monthly_forecast": NUMERIC(17, 4),
+                         "actual_number": NUMERIC(17, 4),
+                         "monthly_actual": NUMERIC(17, 4),
+                         "DLTDT": DATE,
+                         "DLTTM": TIME,
+                         "le": VARCHAR(10)
+                         }
+
+            # convert to binary data # https://stackoverflow.com/questions/69228482/error-while-downloading-the-dataframe
+            # -from-streamlit-web-application-after-data
+            tmp_df_op = to_excel(sql_table_df, index=False)
 
         # draw a line
         st.markdown("""___""")
@@ -481,16 +581,18 @@ def main():
         with pc_col1:
             # push to db if month is 12
             if month == 12:
-                print('data pushed to dB successfully.')
-                # data prep for dB
-                data_prep = data1[(data1.component == 'Beer_Sales') & (data1.index == bs_type)]
-                print(f'hello:, {data_prep}')
-                # st.button(label="Push to dB Table", help="click to push finalize data to table.",
-                #           # on_click=insert_to_table,
-                #
-                #           )
+                st.download_button(label='📥 Download dB data',
+                                   data=tmp_df_op,
+                                   file_name='sample.xlsx'
+                                   )
+                # # data prep for dB
+                # st.button(label="Upload", key="upload_btn", on_click=insert_data_to_dB(sql_table_df, conn=sql_engine,
+                #                                                                        table_name=OP_TBL_NAME,
+                #                                                                        schema_name=OP_TBL_SCHEMA_NAME,
+                #                                                                        data_type=col_types),
+                #           help='click to push data to dB.', disabled=True)
 
-        #pc download
+        # pc download
         with pc_col2:
             # export df
             export_file_name = f'pc_{str(le)}_{str(society)}_{str(month)}.xlsx'
@@ -501,23 +603,10 @@ def main():
 
         # pc value
         with pc_col3:
-
             pc = (ti_final / ni_final)
-            print(pc)
+            # print(pc)
             st.metric(label="Profit Coefficient", value=f'{pc:.2%}')
 
-        #
-        # #######
-        #
-        # sample_qry = f"select left(society, 4) as society_id, year, month," \
-        #              f" pp_001001 as NI, pp_006001 as Beer_Sales " \
-        #              f"from [abi_stg].[mx_tax_prof_coef_nominal_income]" \
-        #              f"where year = {year} and month = {int(le[0])} and left(society, 4) = {society}"
-        # prev_month_sc_data = read_data(sample_qry, sql_conn)
-        # print(f'test--{prev_month_sc_data}')
-        # print(data1)
-        #
-        # qry2 = f""
 
 
 if __name__ == '__main__':
