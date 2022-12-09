@@ -5,7 +5,6 @@ from sqlalchemy.dialects.mssql import VARCHAR, INTEGER, NUMERIC, DATE, TIME
 from src.config import *
 from src.util import *
 
-
 # Fixing the format of number in pandas DataFrames
 pd.set_option('display.float_format', lambda x: '%.3f' % x)
 
@@ -35,7 +34,10 @@ def drivers_callback():
 def main():
     # initialize connection
     sql_conn, sql_engine = init_connection()
-    
+
+    # initialize output connection
+    sql_op_conn, sql_op_engine = init_op_connection()
+
     # read query # abi_stg.mx_tax_prof_coef_results
     all_data_except_bs_df = read_data(SQL_QRY, sql_conn)
 
@@ -410,12 +412,11 @@ def main():
         # Taxable Income
         ti_col1, ti_col2, ti_col3 = st.columns([1.5, 1, 1.5])
 
-
         with ti_col2:
             # Transfer Price Adjustment
             adjustment_final = (
-                        ni_adjusted_amount + dis_adjusted_amount + costs_adjusted_amount + exp_adjusted_amount +
-                        da_adjusted_amount + oth_exp_adjusted_amount + la_adjusted_amount + ia_adjusted_amount
+                    ni_adjusted_amount + dis_adjusted_amount + costs_adjusted_amount + exp_adjusted_amount +
+                    da_adjusted_amount + oth_exp_adjusted_amount + la_adjusted_amount + ia_adjusted_amount
             )
             tpa_final = adjustment_final
             st.metric(label="Transfer Price Adjustment(Mi Mxn)", value=f'{float(tpa_final / pow(10, 6)):,.2f}')
@@ -515,9 +516,20 @@ def main():
 
             # merge actual and forecast
             prep_df = pd.concat([actual_df, forecast_df], ignore_index=True)
+
             # select cols
             prep_cols = ['society', 'component', 'le', 'year', 'month', 'model_type', 'value']
             prep_df = prep_df[prep_cols]
+
+            # le
+            current_le_month, _, _ = le.partition('+')
+            prep_df['filter_flag'] = np.where(prep_df['component'] == 'Inflationary Adjustments',
+                                              np.where(prep_df['month'] >= (int(current_le_month) - 1), 1, 0),
+                                              np.where(prep_df['month'] >= int(current_le_month), 1, 0))
+
+            prep_df['le'] = np.where(prep_df['component'] == 'Inflationary Adjustments',
+                                     np.where(prep_df['month'] == (int(current_le_month) - 1), 'actual', prep_df['le']),
+                                     np.where(prep_df['month'] == int(current_le_month), 'actual', prep_df['le']))
 
             # get monthly values
             sort_cols = ['society', 'component', 'year', 'month', 'model_type']
@@ -525,19 +537,15 @@ def main():
             grp_cols = ['society', 'component', 'model_type']
             prep_df['value_diff'] = prep_df.groupby(grp_cols)['value'].diff()
 
-            # le
-            current_le_month, _, _ = le.partition('+')
-            prep_df['le'] = np.where(prep_df['month'] == int(current_le_month), 'actual', prep_df['le'])
-
-            # filter (current month + forecast months)
-            month_filter = (prep_df['month'] >= int(current_le_month))
-            prep_df = prep_df[month_filter]
-
             # derive metric cols
             prep_df['forecast_number'] = np.where(prep_df['le'] != 'actual', prep_df.value, np.nan)
             prep_df['monthly_forecast'] = np.where(prep_df['le'] != 'actual', prep_df.value_diff, np.nan)
             prep_df['actual_number'] = np.where(prep_df['le'] == 'actual', prep_df.value, np.nan)
             prep_df['monthly_actual'] = np.where(prep_df['le'] == 'actual', prep_df.value_diff, np.nan)
+
+            # filter (current month + forecast months)
+            month_filter = (prep_df['filter_flag'] == 1)
+            prep_df = prep_df[month_filter]
 
             # map society with name
             prep_df['business_unity'] = prep_df['society'].map(sc_id_name_dict)
@@ -575,39 +583,49 @@ def main():
         st.markdown("""___""")
 
         # pc columns
-        pc_col1, pc_col2, pc_col3 = st.columns([1.5, 1, 1.5])
+        pc_col1, pc_col2, pc_col3, pc_col4 = st.columns([1, 1, 1, 1.5])
 
         # push to db
         with pc_col1:
             # push to db if month is 12
             if month == 12:
-                st.download_button(label='📥 Download dB data',
-                                   data=tmp_df_op,
-                                   file_name='sample.xlsx'
-                                   )
-                # # data prep for dB
-                # st.button(label="Upload", key="upload_btn", on_click=insert_data_to_dB(sql_table_df, conn=sql_engine,
-                #                                                                        table_name=OP_TBL_NAME,
-                #                                                                        schema_name=OP_TBL_SCHEMA_NAME,
-                #                                                                        data_type=col_types),
-                #           help='click to push data to dB.', disabled=True)
-
+                # data prep for dB
+                upload_btn = st.button(label="Upload", key="upload_btn", help='click to push data to dB.',
+                                       disabled=False)
+                if upload_btn:
+                    insert_data_to_dB(sql_table_df, conn=sql_op_engine,
+                                      table_name=OP_TBL_NAME,
+                                      schema_name=OP_TBL_SCHEMA_NAME,
+                                      data_type=col_types)
         # pc download
         with pc_col2:
+            # push to db if month is 12
+            if month == 12:
+                export_file_name = f'pc_{str(le)}_{str(society)}_{str(month)}_dB.xlsx'
+                st.download_button(label='📥 Download dB Data',
+                                   data=tmp_df_op,
+                                   file_name=export_file_name
+                                   )
+
+        # pc download
+        with pc_col3:
             # export df
             export_file_name = f'pc_{str(le)}_{str(society)}_{str(month)}.xlsx'
-            st.download_button(label='📥 Download',
+            st.download_button(label='📥 Download PC',
                                data=op_df,
                                file_name=export_file_name
                                )
 
         # pc value
-        with pc_col3:
+        with pc_col4:
             pc = (ti_final / ni_final)
             # print(pc)
             st.metric(label="Profit Coefficient", value=f'{pc:.2%}')
 
 
-
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as ex:
+        st.error('There is an error. Please re-load the page.', icon="🚨")
+        print(ex)

@@ -31,6 +31,26 @@ def init_connection():
     conn = sql_engine.raw_connection(sql_engine)
     return conn, sql_engine
 
+@st.experimental_singleton
+def init_op_connection():
+    connection_url = URL.create(
+        "mssql+pyodbc",
+        username=st.secrets['op_username'],
+        password=st.secrets['op_password'],
+        host=st.secrets['server'],
+        database=st.secrets['database'],
+        query={
+            "driver": "ODBC Driver 17 for SQL Server",
+            "autocommit": "True",
+        },
+    )
+    engine = create_engine(connection_url).execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
+    sql_engine = create_engine(connection_url, echo=True)
+    conn = sql_engine.raw_connection(sql_engine)
+    return conn, sql_engine
+
 
 # Perform query.
 # Uses st.experimental_memo, only rerun when the query changes or after 10 min.

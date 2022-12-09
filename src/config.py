@@ -71,7 +71,7 @@ CLEAN_DATA_QRY = ("select "
                     "and src.le = dest.le "
                     "and CAST(src.dltdt AS DATETIME) + CAST(src.dlttm AS DATETIME) = dest.load_dttm "
                 "where "
-	                "datefromparts(src.year, src.month, 01) > DATEADD(month, -3, GETDATE()) ")
+	                "datefromparts(src.year, src.month, 01) > DATEADD(month, -4, GETDATE()) ")
 
 # output setting
 # columns
