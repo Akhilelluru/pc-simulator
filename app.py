@@ -557,7 +557,7 @@ def main():
 
             # final cols for dB
             db_cols = ['country', 'society', 'business_unity', 'year', 'month', 'component', 'forecast_number',
-                       'monthly_forecast', 'actual_number', 'monthly_actual', 'DLTDT', 'DLTTM', 'le']
+                       'monthly_forecast', 'actual_number', 'monthly_actual', 'model_type', 'DLTDT', 'DLTTM', 'le']
             sql_table_df = prep_df[db_cols]
             # column types for sql table.
             col_types = {"country": VARCHAR(25),
