@@ -76,8 +76,8 @@ CLEAN_DATA_QRY = ("select "
 # output setting
 # columns
 COUNTRY = 'MEXICO'
-DLTDT = datetime.now(tz=None).strftime("%Y-%m-%d")
-DLTTM = datetime.now(tz=None).strftime("%H:%M:%S")
+DLTDT = datetime.now().strftime("%Y-%m-%d")
+DLTTM = datetime.now().strftime("%H:%M:%S")
 # table name
 OP_TBL_NAME = 'mx_tax_prof_coef_results_final'
 OP_TBL_SCHEMA_NAME = 'abi_edw'
