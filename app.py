@@ -1,5 +1,3 @@
-# from datetime import datetime
-import numpy as np
 import base64
 from sqlalchemy.dialects.mssql import VARCHAR, INTEGER, NUMERIC, DATE, TIME
 from src.config import *
@@ -92,7 +90,7 @@ def main():
         st.markdown(
             f"""
             <div class="container">
-                <img class="logo-img" src="data:image/png;base64,{base64.b64encode(open(LOGO_IMG, "rb").read()).decode()}"> 
+             <img class="logo-img" src="data:image/png;base64,{base64.b64encode(open(LOGO_IMG, "rb").read()).decode()}"> 
             </div>
             """,
             unsafe_allow_html=True
@@ -238,16 +236,25 @@ def main():
         # Beer Sales
         bs_col1, bs_col2, bs_col3 = st.columns([1.5, 1, 1.5])
 
+        # bs option list
+        bs_opt_list = list(data1[data1['component'] == 'Beer_Sales']['type_n_val'])
+        disabled = False
+        if not bs_opt_list:
+            bs_opt_list = ["None: 0"]
+            disabled = True
+
         with bs_col1:
             bs_option = st.selectbox(
                 'Beer Sales(Mi Mxn)',
-                [i for i in list(data1[data1['component'] == 'Beer_Sales']['type_n_val'])],
+                [i for i in bs_opt_list],
                 format_func=format_func,
-                key="BS_select"
+                key="bs_select",
+                disabled=disabled
             )
 
         with bs_col2:
-            bs_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="BS", step=1.0, format="%.4f")
+            bs_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="BS", step=1.0, format="%.4f",
+                                                 disabled=disabled)
 
         with bs_col3:
             bs_adjusted_amount = bs_adjusted_amount * pow(10, 6)
@@ -257,35 +264,53 @@ def main():
         # Discounts
         dis_col1, dis_col2, dis_col3 = st.columns([1.5, 1, 1.5])
 
+        # discounts data
+        dis_opt_list = list(data1[data1['component'] == 'Discounts']['type_n_val'])
+        disabled = False
+        if not dis_opt_list:
+            dis_opt_list = ["None: 0"]
+            disabled = True
+
         with dis_col1:
             dis_option = st.selectbox(
                 'Discounts(Mi Mxn)',
-                [i for i in list(data1[data1['component'] == 'Discounts']['type_n_val'])],
+                [i for i in dis_opt_list],
                 format_func=format_func,
-                key="dis_select"
+                key="dis_select",
+                disabled=disabled
             )
 
-            with dis_col2:
-                dis_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="DIS", step=1.0, format="%.4f")
+        with dis_col2:
+            dis_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="DIS", step=1.0, format="%.4f",
+                                                  disabled=disabled)
 
-            with dis_col3:
-                dis_adjusted_amount = dis_adjusted_amount * pow(10, 6)
-                dis_final = float(dis_option.split(": ")[1]) + dis_adjusted_amount
-                st.metric(label="Final Discounts(Mi Mxn)", value=f'{float(dis_final / pow(10, 6)):,.2f}')
+        with dis_col3:
+            dis_adjusted_amount = dis_adjusted_amount * pow(10, 6)
+            dis_final = float(dis_option.split(": ")[1]) + dis_adjusted_amount
+            st.metric(label="Final Discounts(Mi Mxn)", value=f'{float(dis_final / pow(10, 6)):,.2f}')
 
         # Costs
         costs_col1, costs_col2, costs_col3 = st.columns([1.5, 1, 1.5])
 
+        # costs option list
+        costs_opt_list = list(data1[data1['component'] == 'Costs']['type_n_val'])
+        disabled = False
+        if not costs_opt_list:
+            costs_opt_list = ["None: 0"]
+            disabled = True
+
         with costs_col1:
             costs_option = st.selectbox(
                 'Costs(Mi Mxn)',
-                [i for i in list(data1[data1['component'] == 'Costs']['type_n_val'])],
+                [i for i in costs_opt_list],
                 format_func=format_func,
-                key="costs_select"
+                key="costs_select",
+                disabled=disabled
             )
 
         with costs_col2:
-            costs_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="COST", step=1.0, format="%.4f")
+            costs_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="COST", step=1.0, format="%.4f",
+                                                    disabled=disabled)
 
         with costs_col3:
             costs_adjusted_amount = costs_adjusted_amount * pow(10, 6)
@@ -295,16 +320,25 @@ def main():
         # Expenses
         exp_col1, exp_col2, exp_col3 = st.columns([1.5, 1, 1.5])
 
+        # exp option list
+        exp_opt_list = list(data1[data1['component'] == 'Expenses']['type_n_val'])
+        disabled = False
+        if not exp_opt_list:
+            exp_opt_list = ["None: 0"]
+            disabled = True
+
         with exp_col1:
             exp_option = st.selectbox(
                 'Expenses(Mi Mxn)',
-                [i for i in list(data1[data1['component'] == 'Expenses']['type_n_val'])],
+                [i for i in exp_opt_list],
                 format_func=format_func,
-                key="exp_select"
+                key="exp_select",
+                disabled=disabled
             )
 
         with exp_col2:
-            exp_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="EXP", step=1.0, format="%.4f")
+            exp_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="EXP", step=1.0, format="%.4f",
+                                                  disabled=disabled)
 
         with exp_col3:
             exp_adjusted_amount = exp_adjusted_amount * pow(10, 6)
@@ -314,17 +348,25 @@ def main():
         # Depreciation & Amortization
         da_col1, da_col2, da_col3 = st.columns([1.5, 1, 1.5])
 
+        # da option list
+        da_opt_list = list(data1[data1['component'] == 'Depreciation Amortization']['type_n_val'])
+        disabled = False
+        if not da_opt_list:
+            da_opt_list = ["None: 0"]
+            disabled = True
+
         with da_col1:
             da_option = st.selectbox(
                 'Depreciation Amortization(Mi Mxn)',
-                [i for i in
-                 list(data1[data1['component'] == 'Depreciation Amortization']['type_n_val'])],
+                [i for i in da_opt_list],
                 format_func=format_func,
-                key="DA_select"
+                key="DA_select",
+                disabled=disabled
             )
 
         with da_col2:
-            da_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="DA", step=1.0, format="%.4f")
+            da_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="DA", step=1.0, format="%.4f",
+                                                 disabled=disabled)
 
         with da_col3:
             da_adjusted_amount = da_adjusted_amount * pow(10, 6)
@@ -334,16 +376,25 @@ def main():
         # Other Expenses
         oth_exp_col1, oth_exp_col2, oth_exp_col3 = st.columns([1.5, 1, 1.5])
 
+        # da option list
+        oth_exp_opt_list = list(data1[data1['component'] == 'Other Expenses']['type_n_val'])
+        disabled = False
+        if not oth_exp_opt_list:
+            oth_exp_opt_list = ["None: 0"]
+            disabled = True
+
         with oth_exp_col1:
             oth_exp_option = st.selectbox(
                 'Other Expenses(Mi Mxn)',
-                [i for i in list(data1[data1['component'] == 'Other Expenses']['type_n_val'])],
+                [i for i in oth_exp_opt_list],
                 format_func=format_func,
-                key="oth_exp_select"
+                key="oth_exp_select",
+                disabled=disabled
             )
 
         with oth_exp_col2:
-            oth_exp_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="OTH_EXP", step=1.0, format="%.4f")
+            oth_exp_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="OTH_EXP", step=1.0, format="%.4f",
+                                                      disabled=disabled)
 
         with oth_exp_col3:
             oth_exp_adjusted_amount = oth_exp_adjusted_amount * pow(10, 6)
@@ -353,16 +404,25 @@ def main():
         # Ledger Accounts
         la_col1, la_col2, la_col3 = st.columns([1.5, 1, 1.5])
 
+        # la option list
+        la_opt_list = list(data1[data1['component'] == 'Ledger Account']['type_n_val'])
+        disabled = False
+        if not la_opt_list:
+            la_opt_list = ["None: 0"]
+            disabled = True
+
         with la_col1:
             la_option = st.selectbox(
                 'Cuentas Mayor(Mi Mxn)',
-                [i for i in list(data1[data1['component'] == 'Ledger Account']['type_n_val'])],
+                [i for i in la_opt_list],
                 format_func=format_func,
-                key="la_select"
+                key="la_select",
+                disabled=disabled
             )
 
         with la_col2:
-            la_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="LA", step=1.0, format="%.4f")
+            la_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="LA", step=1.0, format="%.4f",
+                                                 disabled=disabled)
 
         with la_col3:
             la_adjusted_amount = la_adjusted_amount * pow(10, 6)
@@ -372,16 +432,25 @@ def main():
         # Inflationary Adjustments
         ia_col1, ia_col2, ia_col3 = st.columns([1.5, 1, 1.5])
 
+        # ia option list
+        ia_opt_list = list(data1[data1['component'] == 'Inflationary Adjustments']['type_n_val'])
+        disabled = False
+        if not ia_opt_list:
+            ia_opt_list = ["None: 0"]
+            disabled = True
+
         with ia_col1:
             ia_option = st.selectbox(
                 'Inflationary Adjustments(Mi Mxn)',
-                [i for i in list(data1[data1['component'] == 'Inflationary Adjustments']['type_n_val'])],
+                [i for i in ia_opt_list],
                 format_func=format_func,
-                key="IA_select"
+                key="IA_select",
+                disabled=disabled
             )
 
         with ia_col2:
-            ia_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="IA", step=1.0, format="%.4f")
+            ia_adjusted_amount = st.number_input('Adjustment(Mi Mxn)', key="IA", step=1.0, format="%.4f",
+                                                 disabled=disabled)
 
         with ia_col3:
             ia_adjusted_amount = ia_adjusted_amount * pow(10, 6)
@@ -544,7 +613,7 @@ def main():
             prep_df['monthly_actual'] = np.where(prep_df['le'] == 'actual', prep_df.value_diff, np.nan)
 
             # filter (current month + forecast months)
-            month_filter = (prep_df['filter_flag'] == 1)
+            month_filter = ((prep_df['filter_flag'] == 1) & (prep_df['model_type'] != 'None'))
             prep_df = prep_df[month_filter]
 
             # map society with name
@@ -575,57 +644,58 @@ def main():
                          "le": VARCHAR(10)
                          }
 
-            # convert to binary data # https://stackoverflow.com/questions/69228482/error-while-downloading-the-dataframe
-            # -from-streamlit-web-application-after-data
+            # convert to binary data # https://stackoverflow.com/questions/69228482/error-while-downloading-the
+            # -dataframe-from-streamlit-web-application-after-data
             tmp_df_op = to_excel(sql_table_df, index=False)
 
-        # draw a line
-        st.markdown("""___""")
+            # draw a line
+            st.markdown("""___""")
 
-        # pc columns
-        pc_col1, pc_col2, pc_col3, pc_col4 = st.columns([1, 1, 1, 1.5])
+            # pc columns
+            pc_col1, pc_col2, pc_col3, pc_col4 = st.columns([1, 1, 1, 1.5])
 
-        # push to db
-        with pc_col1:
-            # push to db if month is 12
-            if month == 12:
-                # data prep for dB
-                upload_btn = st.button(label="Upload", key="upload_btn", help='click to push data to dB.',
-                                       disabled=False)
-                if upload_btn:
-                    insert_data_to_dB(sql_table_df, conn=sql_op_engine,
-                                      table_name=OP_TBL_NAME,
-                                      schema_name=OP_TBL_SCHEMA_NAME,
-                                      data_type=col_types)
-        # pc download
-        with pc_col2:
-            # push to db if month is 12
-            if month == 12:
-                export_file_name = f'pc_{str(le)}_{str(society)}_{str(month)}_dB.xlsx'
-                st.download_button(label='📥 Download dB Data',
-                                   data=tmp_df_op,
+            # push to db
+            with pc_col1:
+                # push to db if month is 12
+                if month == 12:
+                    # data prep for dB
+                    upload_btn = st.button(label="Upload", key="upload_btn", help='click to push data to dB.',
+                                           disabled=False)
+                    if upload_btn:
+                        insert_data_to_dB(sql_table_df, conn=sql_op_engine,
+                                          table_name=OP_TBL_NAME,
+                                          schema_name=OP_TBL_SCHEMA_NAME,
+                                          data_type=col_types)
+            # pc download
+            with pc_col2:
+                # push to db if month is 12
+                if month == 12:
+                    export_file_name = f'pc_{str(le)}_{str(society)}_{str(month)}_dB.xlsx'
+                    st.download_button(label='📥 Download dB Data',
+                                       data=tmp_df_op,
+                                       file_name=export_file_name
+                                       )
+
+            # pc download
+            with pc_col3:
+                # export df
+                export_file_name = f'pc_{str(le)}_{str(society)}_{str(month)}.xlsx'
+                st.download_button(label='📥 Download PC',
+                                   data=op_df,
                                    file_name=export_file_name
                                    )
 
-        # pc download
-        with pc_col3:
-            # export df
-            export_file_name = f'pc_{str(le)}_{str(society)}_{str(month)}.xlsx'
-            st.download_button(label='📥 Download PC',
-                               data=op_df,
-                               file_name=export_file_name
-                               )
-
-        # pc value
-        with pc_col4:
-            pc = (ti_final / ni_final)
-            # print(pc)
-            st.metric(label="Profit Coefficient", value=f'{pc:.2%}')
+            # pc value
+            with pc_col4:
+                pc = (ti_final / ni_final)
+                # print(pc)
+                st.metric(label="Profit Coefficient", value=f'{pc:.2%}')
 
 
 if __name__ == '__main__':
     try:
         main()
     except Exception as ex:
-        st.error('There is an error. Please re-load the page.', icon="🚨")
+        st.error('There is an error. Contact Dev Team!!!', icon="🚨")
+        st.error(str(ex))
         print(ex)
