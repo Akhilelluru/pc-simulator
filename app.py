@@ -246,7 +246,7 @@ def main():
         with bs_col1:
             bs_option = st.selectbox(
                 'Beer Sales(Mi Mxn)',
-                [i for i in bs_opt_list],
+                [i for i in sorted(bs_opt_list,key=lambda x: float(x.split(":")[1][1:]))],
                 format_func=format_func,
                 key="bs_select",
                 disabled=disabled
@@ -274,7 +274,7 @@ def main():
         with dis_col1:
             dis_option = st.selectbox(
                 'Discounts(Mi Mxn)',
-                [i for i in dis_opt_list],
+                [i for i in sorted(dis_opt_list,key=lambda x: float(x.split(":")[1][1:]))],
                 format_func=format_func,
                 key="dis_select",
                 disabled=disabled
@@ -302,7 +302,7 @@ def main():
         with costs_col1:
             costs_option = st.selectbox(
                 'Costs(Mi Mxn)',
-                [i for i in costs_opt_list],
+                [i for i in sorted(costs_opt_list,key=lambda x: float(x.split(":")[1][1:]))],
                 format_func=format_func,
                 key="costs_select",
                 disabled=disabled
@@ -330,7 +330,7 @@ def main():
         with exp_col1:
             exp_option = st.selectbox(
                 'Expenses(Mi Mxn)',
-                [i for i in exp_opt_list],
+                [i for i in sorted(exp_opt_list,key=lambda x: float(x.split(":")[1][1:]))],
                 format_func=format_func,
                 key="exp_select",
                 disabled=disabled
@@ -358,7 +358,7 @@ def main():
         with da_col1:
             da_option = st.selectbox(
                 'Depreciation Amortization(Mi Mxn)',
-                [i for i in da_opt_list],
+                [i for i in sorted(da_opt_list,key=lambda x: float(x.split(":")[1][1:]))],
                 format_func=format_func,
                 key="DA_select",
                 disabled=disabled
@@ -386,7 +386,7 @@ def main():
         with oth_exp_col1:
             oth_exp_option = st.selectbox(
                 'Other Expenses(Mi Mxn)',
-                [i for i in oth_exp_opt_list],
+                [i for i in sorted(oth_exp_opt_list,key=lambda x: float(x.split(":")[1][1:]))],
                 format_func=format_func,
                 key="oth_exp_select",
                 disabled=disabled
@@ -414,7 +414,7 @@ def main():
         with la_col1:
             la_option = st.selectbox(
                 'Cuentas Mayor(Mi Mxn)',
-                [i for i in la_opt_list],
+                [i for i in sorted(la_opt_list,key=lambda x: float(x.split(":")[1][1:]))],
                 format_func=format_func,
                 key="la_select",
                 disabled=disabled
@@ -442,7 +442,7 @@ def main():
         with ia_col1:
             ia_option = st.selectbox(
                 'Inflationary Adjustments(Mi Mxn)',
-                [i for i in ia_opt_list],
+                [i for i in sorted(ia_opt_list,key=lambda x: float(x.split(":")[1][1:]))],
                 format_func=format_func,
                 key="IA_select",
                 disabled=disabled
@@ -465,7 +465,8 @@ def main():
         with ni_col1:
             ni_option = st.selectbox(
                 'Nominal Income(Mi Mxn)',
-                [i for i in list(data1[data1['component'] == 'NI']['type_n_val'])],
+                [i for i in sorted(list(data1[data1['component'] == 'NI']['type_n_val']),\
+                                   key=lambda x: float(x.split(":")[1][1:]))],
                 format_func=format_func,
                 key="NI_select"
             )
